@@ -1,0 +1,33 @@
+name: mitra_umkm_admin
+description: Panel Admin MITRA UMKM
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  firebase_core: ^4.12.1
+  firebase_auth: ^6.5.6
+  cloud_firestore: ^6.7.1
+  google_fonts: ^8.2.0
+  fl_chart: ^1.2.0
+  intl: ^0.20.3
+  uuid: ^4.6.0
+  file_picker: ^11.0.2
+  firebase_storage: ^13.4.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
