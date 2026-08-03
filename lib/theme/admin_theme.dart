@@ -55,16 +55,16 @@ class AdminTheme {
     return ThemeData(
       brightness: Brightness.dark,
       primaryColor: primary,
-      scaffoldBackgroundColor: const Color(0xFF121212),
+      scaffoldBackgroundColor: const Color(0xFF0A0A0A),
       colorScheme: const ColorScheme.dark(
         primary: primary,
         secondary: secondary,
-        surface: Color(0xFF1E1E1E),
+        surface: Color(0xFF262626),
         onSurface: Colors.white,
         error: error,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1E1E1E),
+        backgroundColor: Color(0xFF262626),
         foregroundColor: Colors.white,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white70),
@@ -80,7 +80,7 @@ class AdminTheme {
         ),
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF262626),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),

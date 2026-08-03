@@ -14,14 +14,11 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> {
   final currencyFormatter = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+  String _pendapatanFilter = 'Bulan Ini'; // 'Bulan Ini' or 'Tahun Ini'
 
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    final days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-    final dayName = days[now.weekday - 1];
-    String formattedDate = '$dayName, ${now.day} ${months[now.month - 1]} ${now.year}';
     final isDark = MitraUmkmAdminApp.of(context).isDarkMode;
 
     return StreamBuilder<QuerySnapshot>(
@@ -33,31 +30,76 @@ class _AdminDashboardState extends State<AdminDashboard> {
             List<QueryDocumentSnapshot> users = userSnapshot.data?.docs ?? [];
             List<QueryDocumentSnapshot> transactions = invoiceSnapshot.data?.docs ?? [];
 
+            // Aggregate User Data
             int totalUsers = users.length;
             int totalMikro = 0;
             int totalKecil = 0;
             int totalMenengah = 0;
+            int activeUsers = 0;
+            
+            // For Growth Chart (Bulan Ini)
+            Map<int, int> usersPerDay = {};
+            List<Map<String, dynamic>> recentUsers = [];
 
             for (var u in users) {
               final d = u.data() as Map<String, dynamic>;
               final s = (d['status'] ?? 'mikro').toString().toLowerCase();
-              if (s.contains('mikro')) {
-                totalMikro++;
-              } else if (s.contains('kecil')) {
-                totalKecil++;
-              } else if (s.contains('menengah')) {
-                totalMenengah++;
-              } else {
-                totalMikro++;
+              if (s.contains('mikro')) totalMikro++;
+              else if (s.contains('kecil')) totalKecil++;
+              else if (s.contains('menengah')) totalMenengah++;
+              else totalMikro++;
+
+              // Active Users (last 24 hours)
+              if (d['last_online'] != null) {
+                Timestamp lastOnlineTs = d['last_online'];
+                if (now.difference(lastOnlineTs.toDate()).inHours <= 24) {
+                  activeUsers++;
+                }
+              }
+              
+              // Created at mapping
+              if (d['created_at'] != null) {
+                 Timestamp createdAtTs = d['created_at'];
+                 DateTime createdAt = createdAtTs.toDate();
+                 if (createdAt.month == now.month && createdAt.year == now.year) {
+                   usersPerDay[createdAt.day] = (usersPerDay[createdAt.day] ?? 0) + 1;
+                 }
+                 recentUsers.add(d);
               }
             }
+            
+            recentUsers.sort((a, b) {
+              Timestamp ta = a['created_at'];
+              Timestamp tb = b['created_at'];
+              return tb.toDate().compareTo(ta.toDate());
+            });
+            List<Map<String, dynamic>> top5RecentUsers = recentUsers.take(5).toList();
 
+            // Aggregate Revenue Data
             double totalRevenue = 0;
+            Map<int, double> revenueData = {};
+
             for (var inv in transactions) {
               final d = inv.data() as Map<String, dynamic>;
               final st = (d['status'] ?? '').toString().toLowerCase();
               if (st == 'paid' || st == 'success') {
-                totalRevenue += (d['total_amount'] ?? d['amount'] ?? 0).toDouble();
+                double amount = (d['total_amount'] ?? d['amount'] ?? 0).toDouble();
+                totalRevenue += amount;
+                
+                if (d['created_at'] != null) {
+                  Timestamp createdAtTs = d['created_at'];
+                  DateTime createdAt = createdAtTs.toDate();
+                  
+                  if (_pendapatanFilter == 'Bulan Ini') {
+                    if (createdAt.month == now.month && createdAt.year == now.year) {
+                      revenueData[createdAt.day] = (revenueData[createdAt.day] ?? 0) + amount;
+                    }
+                  } else {
+                    if (createdAt.year == now.year) {
+                      revenueData[createdAt.month] = (revenueData[createdAt.month] ?? 0) + amount;
+                    }
+                  }
+                }
               }
             }
 
@@ -70,139 +112,99 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                      // Header Section
+                      const Text('Overview', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      const Text('Laporan Statistik Mitra UMKM', style: TextStyle(color: AdminTheme.textSecondary, fontSize: 16)),
+                      const SizedBox(height: 32),
+
+                      // Section 1: Stat Cards
+                      GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: isMobile ? 2 : 4,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: isMobile ? 1.4 : 1.8,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Dashboard Admin', style: TextStyle(color: AdminTheme.primary, fontWeight: FontWeight.bold, fontSize: 14)),
-                              const SizedBox(height: 4),
-                              Text('Ikhtisar Panel Kontrol', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AdminTheme.textPrimary)),
-                              const SizedBox(height: 4),
-                              const Text('Laporan Statistik Mitra UMKM', style: TextStyle(color: AdminTheme.textSecondary, fontSize: 14)),
-                            ],
+                          _HoverStatCard(
+                            title: 'Total Pengguna',
+                            value: '$totalUsers',
+                            icon: Icons.storefront,
+                            baseColor: const Color(0xFF0E766D),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
                           ),
-                          if (!isMobile)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AdminTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_today, size: 16, color: AdminTheme.primaryContainer),
-                                  const SizedBox(width: 8),
-                                  Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.primaryContainer)),
-                                ],
-                              ),
-                            ),
+                          _HoverStatCard(
+                            title: 'Pengguna Aktif',
+                            value: '$activeUsers',
+                            icon: Icons.online_prediction,
+                            baseColor: const Color(0xFF14B2A5),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
+                          ),
+                          _HoverStatCard(
+                            title: 'Total Invoice',
+                            value: '${transactions.length}',
+                            icon: Icons.receipt_long,
+                            baseColor: const Color(0xFF8FEBD8),
+                            textColorLight: const Color(0xFF262626),
+                            isDark: isDark,
+                          ),
+                          _HoverStatCard(
+                            title: 'Total Pendapatan',
+                            value: currencyFormatter.format(totalRevenue),
+                            icon: Icons.account_balance_wallet,
+                            baseColor: const Color(0xFFF97417),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 32),
 
-                      // Stat Cards Grid
-                      LayoutBuilder(
-                        builder: (context, gridConstraints) {
-                          int crossAxisCount = isMobile ? 1 : (gridConstraints.maxWidth < 1100 ? 2 : 4);
-                          return GridView.count(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.8,
-                            children: [
-                              _HoverStatCard(title: 'TOTAL PENGGUNA', value: '$totalUsers', subtitle: 'Mitra Terdaftar', icon: Icons.storefront, color: AdminTheme.primary, isDark: isDark),
-                              _HoverStatCard(title: 'PENDAPATAN LUNAS', value: currencyFormatter.format(totalRevenue), subtitle: '${transactions.length} Transaksi', icon: Icons.account_balance_wallet, color: Colors.green, isDark: isDark),
-                              _HoverStatCard(title: 'KATEGORI MIKRO', value: '$totalMikro', subtitle: 'Skala Mikro', icon: Icons.shopping_basket, color: Colors.orange, isDark: isDark),
-                              _HoverStatCard(title: 'KATEGORI KECIL/MENENGAH', value: '${totalKecil + totalMenengah}', subtitle: 'Skala Kecil & Menengah', icon: Icons.business, color: Colors.purple, isDark: isDark),
-                            ],
-                          );
-                        },
-                      ),
+                      // Section 2: Revenue Chart & Category Donut
+                      if (isMobile) ...[
+                        _buildRevenueChart(isDark, revenueData),
+                        const SizedBox(height: 24),
+                        _buildCategoryDonut(isDark, totalMikro, totalKecil, totalMenengah),
+                      ] else ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 7, child: _buildRevenueChart(isDark, revenueData)),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 3, child: _buildCategoryDonut(isDark, totalMikro, totalKecil, totalMenengah)),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 32),
 
-                      // Revenue Chart & Category Distribution
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Grafik Performa Pendapatan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 20),
-                                    SizedBox(
-                                      height: 250,
-                                      child: LineChart(
-                                        LineChartData(
-                                          gridData: const FlGridData(show: true),
-                                          titlesData: const FlTitlesData(show: false),
-                                          borderData: FlBorderData(show: false),
-                                          lineBarsData: [
-                                            LineChartBarData(
-                                              spots: const [
-                                                FlSpot(0, 3),
-                                                FlSpot(1, 4),
-                                                FlSpot(2, 3.5),
-                                                FlSpot(3, 5),
-                                                FlSpot(4, 4.8),
-                                                FlSpot(5, 7),
-                                              ],
-                                              isCurved: true,
-                                              color: AdminTheme.primary,
-                                              barWidth: 4,
-                                              isStrokeCapRound: true,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(20.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('Distribusi Kategori UMKM', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 20),
-                                    SizedBox(
-                                      height: 200,
-                                      child: PieChart(
-                                        PieChartData(
-                                          sectionsSpace: 4,
-                                          centerSpaceRadius: 40,
-                                          sections: [
-                                            PieChartSectionData(value: totalMikro.toDouble() == 0 ? 1 : totalMikro.toDouble(), color: AdminTheme.primary, title: 'Mikro'),
-                                            PieChartSectionData(value: totalKecil.toDouble() == 0 ? 1 : totalKecil.toDouble(), color: Colors.orange, title: 'Kecil'),
-                                            PieChartSectionData(value: totalMenengah.toDouble() == 0 ? 1 : totalMenengah.toDouble(), color: Colors.purple, title: 'Menengah'),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                      // Section 3: Recent Users Table & Growth Bar Chart
+                      if (isMobile) ...[
+                        _buildRecentUsersTable(isDark, top5RecentUsers),
+                        const SizedBox(height: 24),
+                        _buildGrowthChart(isDark, usersPerDay),
+                      ] else ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 7, child: _buildRecentUsersTable(isDark, top5RecentUsers)),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 3, child: _buildGrowthChart(isDark, usersPerDay)),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 48),
+
+                      // Footer
+                      const Center(
+                        child: Text(
+                          '© 2026 Mitra UMKM. Hak Cipta Dilindungi.',
+                          style: TextStyle(color: AdminTheme.textSecondary, fontSize: 12),
+                        ),
                       ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 );
@@ -213,63 +215,383 @@ class _AdminDashboardState extends State<AdminDashboard> {
       },
     );
   }
+
+  Widget _buildRevenueChart(bool isDark, Map<int, double> data) {
+    List<FlSpot> spots = [];
+    if (data.isEmpty) {
+      spots = [const FlSpot(0, 0)];
+    } else {
+      var sortedKeys = data.keys.toList()..sort();
+      for (var key in sortedKeys) {
+        spots.add(FlSpot(key.toDouble(), data[key]!));
+      }
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tren Pendapatan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    _filterButton('Bulan Ini', isDark),
+                    const SizedBox(width: 8),
+                    _filterButton('Tahun Ini', isDark),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 250,
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: true, drawVerticalLine: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        getTitlesWidget: (value, meta) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              value.toInt().toString(),
+                              style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 12),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: AdminTheme.primary,
+                      barWidth: 4,
+                      isStrokeCapRound: true,
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: AdminTheme.primary.withOpacity(0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterButton(String label, bool isDark) {
+    bool isActive = _pendapatanFilter == label;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _pendapatanFilter = label;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? AdminTheme.primary : (isDark ? const Color(0xFF333333) : Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            fontSize: 12,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryDonut(bool isDark, int mikro, int kecil, int menengah) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Kategori Pengguna', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 200,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      sectionsSpace: 4,
+                      centerSpaceRadius: 60,
+                      sections: [
+                        PieChartSectionData(
+                          value: mikro.toDouble() == 0 ? 0.1 : mikro.toDouble(), 
+                          color: const Color(0xFF14B2A5), 
+                          title: '',
+                          radius: 20,
+                        ),
+                        PieChartSectionData(
+                          value: kecil.toDouble() == 0 ? 0.1 : kecil.toDouble(), 
+                          color: const Color(0xFFF97417), 
+                          title: '',
+                          radius: 20,
+                        ),
+                        PieChartSectionData(
+                          value: menengah.toDouble() == 0 ? 0.1 : menengah.toDouble(), 
+                          color: Colors.purple, 
+                          title: '',
+                          radius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${mikro + kecil + menengah}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                      const Text('Total', style: TextStyle(color: AdminTheme.textSecondary, fontSize: 12)),
+                    ],
+                  )
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildLegendItem('Mikro', const Color(0xFF14B2A5)),
+                _buildLegendItem('Kecil', const Color(0xFFF97417)),
+                _buildLegendItem('Menengah', Colors.purple),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
+  Widget _buildRecentUsersTable(bool isDark, List<Map<String, dynamic>> users) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('5 Pendaftar Terbaru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            if (users.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Center(child: Text('Belum ada data pendaftar terbaru.')),
+              )
+            else
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  headingTextStyle: const TextStyle(fontWeight: FontWeight.bold, color: AdminTheme.textSecondary),
+                  columns: const [
+                    DataColumn(label: Text('Nama (Toko)')),
+                    DataColumn(label: Text('Email')),
+                    DataColumn(label: Text('Kategori')),
+                    DataColumn(label: Text('Tanggal Daftar')),
+                  ],
+                  rows: users.map((u) {
+                    final date = u['created_at'] != null ? DateFormat('dd MMM yyyy').format((u['created_at'] as Timestamp).toDate()) : '-';
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(u['store_name'] ?? u['name'] ?? '-')),
+                        DataCell(Text(u['email'] ?? '-')),
+                        DataCell(Text(u['status'] ?? 'Usaha Mikro')),
+                        DataCell(Text(date)),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGrowthChart(bool isDark, Map<int, int> data) {
+    List<BarChartGroupData> barGroups = [];
+    if (data.isEmpty) {
+      barGroups = [BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: 0)])];
+    } else {
+      var sortedKeys = data.keys.toList()..sort();
+      for (var key in sortedKeys) {
+        barGroups.add(
+          BarChartGroupData(
+            x: key,
+            barRods: [
+              BarChartRodData(
+                toY: data[key]!.toDouble(),
+                color: const Color(0xFF14B2A5),
+                width: 12,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              )
+            ],
+          ),
+        );
+      }
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tren Pertumbuhan UMKM (Bulan Ini)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        getTitlesWidget: (value, meta) {
+                          if (value.toInt() % 5 == 0 || value.toInt() == 1 || value.toInt() == 31) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                value.toInt().toString(),
+                                style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 10),
+                              ),
+                            );
+                          }
+                          return const SizedBox();
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: barGroups,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _HoverStatCard extends StatelessWidget {
+class _HoverStatCard extends StatefulWidget {
   final String title;
   final String value;
-  final String subtitle;
   final IconData icon;
-  final Color color;
+  final Color baseColor;
+  final Color textColorLight;
   final bool isDark;
 
   const _HoverStatCard({
     Key? key,
     required this.title,
     required this.value,
-    required this.subtitle,
     required this.icon,
-    required this.color,
+    required this.baseColor,
+    required this.textColorLight,
     required this.isDark,
   }) : super(key: key);
 
   @override
+  State<_HoverStatCard> createState() => _HoverStatCardState();
+}
+
+class _HoverStatCardState extends State<_HoverStatCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+    final bgColor = widget.isDark ? const Color(0xFF262626) : widget.baseColor;
+    final borderColor = widget.isDark ? widget.baseColor : Colors.transparent;
+    final textColor = widget.isDark ? Colors.white : widget.textColorLight;
+    final iconColor = widget.isDark ? widget.baseColor : textColor.withOpacity(0.8);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: () {},
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? const Color(0xFF333333) : AdminTheme.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          transform: Matrix4.identity()..translate(0.0, _isHovered ? -5.0 : 0.0),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: widget.isDark ? 1.5 : 0),
+            boxShadow: _isHovered
+                ? [
+                    BoxShadow(
+                      color: widget.isDark ? widget.baseColor.withOpacity(0.2) : widget.baseColor.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 8),
+                    )
+                  ]
+                : [],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+              Icon(widget.icon, color: iconColor, size: 28),
+              const Spacer(),
+              Text(
+                widget.title,
+                style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.value,
+                  style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                child: Icon(icon, color: color, size: 24),
               ),
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: AdminTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(color: color, fontSize: 11)),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -94,6 +94,15 @@ class _UsersScreenState extends State<UsersScreen> {
           }).toList();
         }
 
+        users.sort((a, b) {
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+          
+          Timestamp tsA = dataA['created_at'] ?? Timestamp.fromMillisecondsSinceEpoch(0);
+          Timestamp tsB = dataB['created_at'] ?? Timestamp.fromMillisecondsSinceEpoch(0);
+          return tsB.compareTo(tsA);
+        });
+
         int totalPages = (users.length / _itemsPerPage).ceil();
         if (_currentPage >= totalPages && totalPages > 0) _currentPage = totalPages - 1;
 
@@ -117,16 +126,52 @@ class _UsersScreenState extends State<UsersScreen> {
                   const Text('Kelola data dan status pengguna aplikasi Mitra UMKM.', style: TextStyle(color: AdminTheme.textSecondary)),
                   const SizedBox(height: 32),
 
-                  Row(
-                    children: [
-                      Expanded(child: _HoverStatCard(title: 'Total Pengguna', value: '$totalUsers', subtitle: 'Seluruh akun terdaftar', icon: Icons.people, color: AdminTheme.primary, isDark: isDark)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _HoverStatCard(title: 'Usaha Mikro', value: '$totalMikro', subtitle: 'Kategori Mikro', icon: Icons.store, color: Colors.blue, isDark: isDark)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _HoverStatCard(title: 'Usaha Kecil', value: '$totalKecil', subtitle: 'Kategori Kecil', icon: Icons.business, color: Colors.orange, isDark: isDark)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _HoverStatCard(title: 'Usaha Menengah', value: '$totalMenengah', subtitle: 'Kategori Menengah', icon: Icons.domain, color: Colors.purple, isDark: isDark)),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, gridConstraints) {
+                      int crossAxisCount = isMobile ? 2 : 4;
+                      return GridView.count(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: isMobile ? 1.4 : 1.8,
+                        children: [
+                          _HoverStatCard(
+                            title: 'Total Pengguna',
+                            value: '$totalUsers',
+                            icon: Icons.people,
+                            baseColor: const Color(0xFF0E766D),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
+                          ),
+                          _HoverStatCard(
+                            title: 'Usaha Mikro',
+                            value: '$totalMikro',
+                            icon: Icons.store,
+                            baseColor: const Color(0xFF14B2A5),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
+                          ),
+                          _HoverStatCard(
+                            title: 'Usaha Kecil',
+                            value: '$totalKecil',
+                            icon: Icons.business,
+                            baseColor: const Color(0xFF8FEBD8),
+                            textColorLight: const Color(0xFF262626),
+                            isDark: isDark,
+                          ),
+                          _HoverStatCard(
+                            title: 'Usaha Menengah',
+                            value: '$totalMenengah',
+                            icon: Icons.domain,
+                            baseColor: const Color(0xFFF97417),
+                            textColorLight: Colors.white,
+                            isDark: isDark,
+                          ),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 32),
 
@@ -164,103 +209,107 @@ class _UsersScreenState extends State<UsersScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              dataTextStyle: const TextStyle(fontSize: 13, color: Colors.black87),
-                              headingTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
-                              columnSpacing: 16,
-                              columns: const [
-                                DataColumn(label: Text('No.')),
-                                DataColumn(label: Text('Nama (Toko & Email)')),
-                                DataColumn(label: Text('Kategori')),
-                                DataColumn(label: Text('Status')),
-                                DataColumn(label: Text('Token AI')),
-                                DataColumn(label: Text('Kasir')),
-                                DataColumn(label: Text('Produk')),
-                                DataColumn(label: Text('Aksi')),
-                              ],
-                              rows: paginatedUsers.asMap().entries.map((entry) {
-                                int index = entry.key;
-                                final doc = entry.value;
-                                final data = doc.data() as Map<String, dynamic>;
-                                
-                                int aiCredits = data['ai_credits_remaining'] ?? 100;
-                                int cashierLimitUsed = data['cashier_limit_used'] ?? 0;
-                                int productLimit = data['product_limit'] ?? 3;
-                                int productUsed = data['product_used'] ?? 0;
-
-                                // Format tampilan
-                                String cashierText = (data['status'] ?? '').toString().toLowerCase().contains('mikro') || (data['status'] == null)
-                                  ? '$cashierLimitUsed / $_freeCashierLimit'
-                                  : '$cashierLimitUsed / Unlimited';
-
-                                String productText = productLimit == -1 
-                                  ? '$productUsed / Unlimited' 
-                                  : '$productUsed / $productLimit';
-
-                                // Category text and color
-                                String categoryText = data['status'] ?? 'Usaha Mikro';
-                                Color categoryColor = Colors.blue;
-                                if (categoryText.toLowerCase().contains('kecil')) categoryColor = Colors.orange;
-                                if (categoryText.toLowerCase().contains('menengah')) categoryColor = Colors.purple;
-
-                                // Online Status
-                                String onlineStatus = '-';
-                                Color onlineColor = Colors.grey;
-                                if (data['last_online'] != null) {
-                                  Timestamp lastOnlineTs = data['last_online'];
-                                  DateTime lastOnlineDate = lastOnlineTs.toDate();
-                                  DateTime now = DateTime.now();
-                                  int diffDays = now.difference(lastOnlineDate).inDays;
-                                  
-                                  if (diffDays == 0 && now.day == lastOnlineDate.day) {
-                                    onlineStatus = 'Online';
-                                    onlineColor = Colors.green;
-                                  } else if (diffDays == 0) {
-                                    onlineStatus = 'Offline (kemarin)';
-                                    onlineColor = Colors.red;
-                                  } else {
-                                    onlineStatus = 'Offline ($diffDays hari yang lalu)';
-                                    onlineColor = Colors.red;
-                                  }
-                                }
-
-                                return DataRow(cells: [
-                                  DataCell(Text('${startIdx + index + 1}')),
-                                  DataCell(Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(data['store_name'] ?? data['name'] ?? 'Tanpa Nama', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                      Text(data['email'] ?? '-', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                          LayoutBuilder(
+                            builder: (context, tableConstraints) {
+                              return SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(minWidth: tableConstraints.maxWidth),
+                                  child: DataTable(
+                                    dataTextStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+                                    headingTextStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                                    columnSpacing: 16,
+                                    columns: const [
+                                      DataColumn(label: Text('No.')),
+                                      DataColumn(label: Text('Nama (Toko & Email)')),
+                                      DataColumn(label: Text('Kategori')),
+                                      DataColumn(label: Text('Status')),
+                                      DataColumn(label: Text('Token AI')),
+                                      DataColumn(label: Text('Kasir')),
+                                      DataColumn(label: Text('Produk')),
+                                      DataColumn(label: Text('Aksi')),
                                     ],
-                                  )),
-                                  DataCell(Text(categoryText, style: TextStyle(color: categoryColor, fontWeight: FontWeight.bold))),
-                                  DataCell(Text(onlineStatus, style: TextStyle(color: onlineColor))),
-                                  DataCell(Text('Sisa: $aiCredits')),
-                                  DataCell(Text(cashierText)),
-                                  DataCell(Text(productText)),
-                                  DataCell(
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit, color: AdminTheme.primary),
-                                          onPressed: () => _editUserDialog(doc.id, data),
-                                          tooltip: 'Edit Kategori & Kuota',
+                                    rows: paginatedUsers.asMap().entries.map((entry) {
+                                      int index = entry.key;
+                                      final doc = entry.value;
+                                      final data = doc.data() as Map<String, dynamic>;
+                                      
+                                      int aiCredits = data['ai_credits_remaining'] ?? 100;
+                                      int cashierLimitUsed = data['cashier_limit_used'] ?? 0;
+                                      int productLimit = data['product_limit'] ?? 3;
+                                      int productUsed = data['product_used'] ?? 0;
+
+                                      String cashierText = (data['status'] ?? '').toString().toLowerCase().contains('mikro') || (data['status'] == null)
+                                        ? '$cashierLimitUsed / $_freeCashierLimit'
+                                        : '$cashierLimitUsed / Unlimited';
+
+                                      String productText = productLimit == -1 
+                                        ? '$productUsed / Unlimited' 
+                                        : '$productUsed / $productLimit';
+
+                                      String categoryText = data['status'] ?? 'Usaha Mikro';
+                                      Color categoryColor = Colors.blue;
+                                      if (categoryText.toLowerCase().contains('kecil')) categoryColor = Colors.orange;
+                                      if (categoryText.toLowerCase().contains('menengah')) categoryColor = Colors.purple;
+
+                                      String onlineStatus = '-';
+                                      Color onlineColor = Colors.grey;
+                                      if (data['last_online'] != null) {
+                                        Timestamp lastOnlineTs = data['last_online'];
+                                        DateTime lastOnlineDate = lastOnlineTs.toDate();
+                                        DateTime now = DateTime.now();
+                                        int diffDays = now.difference(lastOnlineDate).inDays;
+                                        
+                                        if (diffDays == 0 && now.day == lastOnlineDate.day) {
+                                          onlineStatus = 'Online';
+                                          onlineColor = Colors.green;
+                                        } else if (diffDays == 0) {
+                                          onlineStatus = 'Offline (kemarin)';
+                                          onlineColor = Colors.red;
+                                        } else {
+                                          onlineStatus = 'Offline ($diffDays hari yang lalu)';
+                                          onlineColor = Colors.red;
+                                        }
+                                      }
+
+                                      return DataRow(cells: [
+                                        DataCell(Text('${startIdx + index + 1}')),
+                                        DataCell(Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Text(data['store_name'] ?? data['name'] ?? 'Tanpa Nama', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                            Text(data['email'] ?? '-', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                          ],
+                                        )),
+                                        DataCell(Text(categoryText, style: TextStyle(color: categoryColor, fontWeight: FontWeight.bold))),
+                                        DataCell(Text(onlineStatus, style: TextStyle(color: onlineColor))),
+                                        DataCell(Text('Sisa: $aiCredits')),
+                                        DataCell(Text(cashierText)),
+                                        DataCell(Text(productText)),
+                                        DataCell(
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.edit, color: AdminTheme.primary),
+                                                onPressed: () => _editUserDialog(doc.id, data),
+                                                tooltip: 'Edit Kategori & Kuota',
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete, color: Colors.red),
+                                                onPressed: () => _deleteUserDialog(doc.id, data['store_name'] ?? data['email'] ?? 'Pengguna'),
+                                                tooltip: 'Hapus Pengguna',
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete, color: Colors.red),
-                                          onPressed: () => _deleteUserDialog(doc.id, data['store_name'] ?? data['email'] ?? 'Pengguna'),
-                                          tooltip: 'Hapus Pengguna',
-                                        ),
-                                      ],
-                                    ),
+                                      ]);
+                                    }).toList(),
                                   ),
-                                ]);
-                              }).toList(),
-                            ),
+                                ),
+                              );
+                            },
                           ),
 
                           if (totalPages > 1) ...[
@@ -388,44 +437,85 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 }
 
-class _HoverStatCard extends StatelessWidget {
+class _HoverStatCard extends StatefulWidget {
   final String title;
   final String value;
-  final String subtitle;
   final IconData icon;
-  final Color color;
+  final Color baseColor;
+  final Color textColorLight;
   final bool isDark;
 
   const _HoverStatCard({
     Key? key,
     required this.title,
     required this.value,
-    required this.subtitle,
     required this.icon,
-    required this.color,
+    required this.baseColor,
+    required this.textColorLight,
     required this.isDark,
   }) : super(key: key);
 
   @override
+  State<_HoverStatCard> createState() => _HoverStatCardState();
+}
+
+class _HoverStatCardState extends State<_HoverStatCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+    final bgColor = widget.isDark ? const Color(0xFF262626) : widget.baseColor;
+    final borderColor = widget.isDark ? widget.baseColor : Colors.transparent;
+    final textColor = widget.isDark ? Colors.white : widget.textColorLight;
+    final iconColor = widget.isDark ? widget.baseColor : textColor.withOpacity(0.8);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: () {},
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? const Color(0xFF333333) : AdminTheme.outline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(fontSize: 12, color: AdminTheme.textSecondary)),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: TextStyle(fontSize: 11, color: color)),
-        ],
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          transform: Matrix4.identity()..translate(0.0, _isHovered ? -5.0 : 0.0),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: widget.isDark ? 1.5 : 0),
+            boxShadow: _isHovered
+                ? [
+                    BoxShadow(
+                      color: widget.isDark ? widget.baseColor.withOpacity(0.2) : widget.baseColor.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 8),
+                    )
+                  ]
+                : [],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, color: iconColor, size: 28),
+              const Spacer(),
+              Text(
+                widget.title,
+                style: TextStyle(color: textColor.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.value,
+                  style: TextStyle(color: textColor, fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
