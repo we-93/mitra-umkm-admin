@@ -19,6 +19,7 @@ class _UsersScreenState extends State<UsersScreen> {
   final int _itemsPerPage = 10;
   
   List<Map<String, dynamic>> _upgradePackages = [];
+  int _freeCashierLimit = 30;
 
   @override
   void initState() {
@@ -33,8 +34,12 @@ class _UsersScreenState extends State<UsersScreen> {
         final List packages = docPackages.data()!['packages'];
         _upgradePackages = packages.map((e) => Map<String, dynamic>.from(e)).toList();
       }
+      final docConfig = await FirebaseFirestore.instance.doc('system_config/general').get();
+      if (docConfig.exists) {
+        _freeCashierLimit = docConfig.data()?['free_cashier_limit'] ?? 30;
+      }
     } catch (e) {
-      debugPrint('Error loading packages config: $e');
+      debugPrint('Error loading config: $e');
     }
   }
 
@@ -162,13 +167,17 @@ class _UsersScreenState extends State<UsersScreen> {
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: DataTable(
+                              dataTextStyle: const TextStyle(fontSize: 13, color: Colors.black87),
+                              headingTextStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                              columnSpacing: 16,
                               columns: const [
                                 DataColumn(label: Text('No.')),
                                 DataColumn(label: Text('Nama (Toko & Email)')),
                                 DataColumn(label: Text('Kategori')),
+                                DataColumn(label: Text('Status')),
                                 DataColumn(label: Text('Token AI')),
-                                DataColumn(label: Text('Transaksi Kasir')),
-                                DataColumn(label: Text('Batas Produk')),
+                                DataColumn(label: Text('Kasir')),
+                                DataColumn(label: Text('Produk')),
                                 DataColumn(label: Text('Aksi')),
                               ],
                               rows: paginatedUsers.asMap().entries.map((entry) {
@@ -179,6 +188,43 @@ class _UsersScreenState extends State<UsersScreen> {
                                 int aiCredits = data['ai_credits_remaining'] ?? 100;
                                 int cashierLimitUsed = data['cashier_limit_used'] ?? 0;
                                 int productLimit = data['product_limit'] ?? 3;
+                                int productUsed = data['product_used'] ?? 0;
+
+                                // Format tampilan
+                                String cashierText = (data['status'] ?? '').toString().toLowerCase().contains('mikro') || (data['status'] == null)
+                                  ? '$cashierLimitUsed / $_freeCashierLimit'
+                                  : '$cashierLimitUsed / Unlimited';
+
+                                String productText = productLimit == -1 
+                                  ? '$productUsed / Unlimited' 
+                                  : '$productUsed / $productLimit';
+
+                                // Category text and color
+                                String categoryText = data['status'] ?? 'Usaha Mikro';
+                                Color categoryColor = Colors.blue;
+                                if (categoryText.toLowerCase().contains('kecil')) categoryColor = Colors.orange;
+                                if (categoryText.toLowerCase().contains('menengah')) categoryColor = Colors.purple;
+
+                                // Online Status
+                                String onlineStatus = '-';
+                                Color onlineColor = Colors.grey;
+                                if (data['last_online'] != null) {
+                                  Timestamp lastOnlineTs = data['last_online'];
+                                  DateTime lastOnlineDate = lastOnlineTs.toDate();
+                                  DateTime now = DateTime.now();
+                                  int diffDays = now.difference(lastOnlineDate).inDays;
+                                  
+                                  if (diffDays == 0 && now.day == lastOnlineDate.day) {
+                                    onlineStatus = 'Online';
+                                    onlineColor = Colors.green;
+                                  } else if (diffDays == 0) {
+                                    onlineStatus = 'Offline (kemarin)';
+                                    onlineColor = Colors.red;
+                                  } else {
+                                    onlineStatus = 'Offline ($diffDays hari yang lalu)';
+                                    onlineColor = Colors.red;
+                                  }
+                                }
 
                                 return DataRow(cells: [
                                   DataCell(Text('${startIdx + index + 1}')),
@@ -186,14 +232,15 @@ class _UsersScreenState extends State<UsersScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(data['store_name'] ?? data['name'] ?? 'Tanpa Nama', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      Text(data['email'] ?? '-', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                      Text(data['store_name'] ?? data['name'] ?? 'Tanpa Nama', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      Text(data['email'] ?? '-', style: const TextStyle(color: Colors.grey, fontSize: 11)),
                                     ],
                                   )),
-                                  DataCell(Chip(label: Text(data['status'] ?? 'Usaha Mikro'))),
-                                  DataCell(Text(aiCredits.toString())),
-                                  DataCell(Text(cashierLimitUsed.toString())),
-                                  DataCell(Text(productLimit.toString())),
+                                  DataCell(Text(categoryText, style: TextStyle(color: categoryColor, fontWeight: FontWeight.bold))),
+                                  DataCell(Text(onlineStatus, style: TextStyle(color: onlineColor))),
+                                  DataCell(Text('Sisa: $aiCredits')),
+                                  DataCell(Text(cashierText)),
+                                  DataCell(Text(productText)),
                                   DataCell(
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -249,8 +296,6 @@ class _UsersScreenState extends State<UsersScreen> {
   void _editUserDialog(String userId, Map<String, dynamic> data) {
     String currentCategory = data['status'] ?? 'Usaha Mikro';
     
-    // Ensure the default dropdown items exist, even if package names changed, but ideally we match them
-    // To be safe, we'll use a dynamic list based on _upgradePackages plus 'Usaha Mikro' as default
     List<String> availableCategories = ['Usaha Mikro'];
     for (var pkg in _upgradePackages) {
       if (pkg['name'] != null && !availableCategories.contains(pkg['name'])) {
@@ -260,23 +305,14 @@ class _UsersScreenState extends State<UsersScreen> {
     if (!availableCategories.contains(currentCategory)) {
       availableCategories.add(currentCategory);
     }
-
-    int aiCredits = data['ai_credits_remaining'] ?? 100;
-    int cashierLimit = -1; // unlimited? wait, the display is used limit. But the admin wants to set max.
-    // Actually PRD says "transaksi (sisa kuota)". Wait, in Firebase, we track "cashier_limit_used". 
-    // And "free_cashier_limit" is from config. Or if they upgrade, does it change max or resets used?
-    // Usually if limit is unlimited (-1), we don't care about used.
-    // Let's just allow them to reset cashier_limit_used to 0, or set the ai_credits and product_limit.
     
-    // Let's use controllers
-    TextEditingController aiController = TextEditingController(text: aiCredits.toString());
-    TextEditingController productLimitController = TextEditingController(text: (data['product_limit'] ?? 3).toString());
-    TextEditingController cashierUsedController = TextEditingController(text: (data['cashier_limit_used'] ?? 0).toString());
+    TextEditingController addAiController = TextEditingController(text: '0');
+    TextEditingController addProductLimitController = TextEditingController(text: '0');
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Edit Kategori & Kuota: ${data['store_name'] ?? 'User'}'),
+        title: Text('Edit Kategori & Tambah Kuota: ${data['store_name'] ?? 'User'}'),
         content: StatefulBuilder(
           builder: (ctx, setSt) => Column(
             mainAxisSize: MainAxisSize.min,
@@ -286,42 +322,21 @@ class _UsersScreenState extends State<UsersScreen> {
                 value: currentCategory,
                 items: availableCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (val) {
-                  if (val != null) {
-                    setSt(() {
-                      currentCategory = val;
-                      // Autofill based on packages
-                      if (val == 'Usaha Mikro') {
-                        aiController.text = '100';
-                        productLimitController.text = '3';
-                        cashierUsedController.text = '0'; // reset used
-                      } else {
-                        var matchedPkg = _upgradePackages.firstWhere((p) => p['name'] == val, orElse: () => {});
-                        if (matchedPkg.isNotEmpty) {
-                          aiController.text = (matchedPkg['ai_credits'] ?? 0).toString();
-                          productLimitController.text = (matchedPkg['product_quota'] ?? -1).toString();
-                          cashierUsedController.text = '0'; // reset used on upgrade
-                        }
-                      }
-                    });
-                  }
+                  if (val != null) setSt(() => currentCategory = val);
                 },
               ),
               const SizedBox(height: 16),
+              const Text('Masukkan angka untuk menambah kuota (bisa negatif untuk mengurangi):', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 12),
               TextField(
-                controller: aiController,
-                decoration: const InputDecoration(labelText: 'Token AI Tersisa', border: OutlineInputBorder()),
+                controller: addAiController,
+                decoration: const InputDecoration(labelText: 'Tambah Token AI (+)', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: productLimitController,
-                decoration: const InputDecoration(labelText: 'Batas Produk (-1 = Unlimited)', border: OutlineInputBorder()),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: cashierUsedController,
-                decoration: const InputDecoration(labelText: 'Transaksi Kasir Terpakai', border: OutlineInputBorder()),
+                controller: addProductLimitController,
+                decoration: const InputDecoration(labelText: 'Tambah Batas Produk (+)', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -331,16 +346,17 @@ class _UsersScreenState extends State<UsersScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
-              int newAi = int.tryParse(aiController.text) ?? 100;
-              int newProd = int.tryParse(productLimitController.text) ?? 3;
-              int newCashier = int.tryParse(cashierUsedController.text) ?? 0;
+              int addAi = int.tryParse(addAiController.text) ?? 0;
+              int addProd = int.tryParse(addProductLimitController.text) ?? 0;
 
-              await FirebaseFirestore.instance.collection('users').doc(userId).update({
+              Map<String, dynamic> updates = {
                 'status': currentCategory,
-                'ai_credits_remaining': newAi,
-                'product_limit': newProd,
-                'cashier_limit_used': newCashier,
-              });
+              };
+              
+              if (addAi != 0) updates['ai_credits_remaining'] = FieldValue.increment(addAi);
+              if (addProd != 0) updates['product_limit'] = FieldValue.increment(addProd);
+
+              await FirebaseFirestore.instance.collection('users').doc(userId).update(updates);
               if (mounted) Navigator.pop(ctx);
             },
             child: const Text('Simpan'),
