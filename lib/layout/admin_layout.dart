@@ -132,6 +132,13 @@ class AdminLayout extends StatelessWidget {
                   isMobile: isMobile,
                 ),
                 _NavItem(
+                  title: 'Log Token AI',
+                  icon: Icons.history_outlined,
+                  route: '/ai_log',
+                  currentRoute: currentRoute,
+                  isMobile: isMobile,
+                ),
+                _NavItem(
                   title: 'Notifikasi',
                   icon: Icons.notifications_outlined,
                   route: '/notifications',

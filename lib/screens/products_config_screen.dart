@@ -53,14 +53,14 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
           {
             'name': 'Usaha Kecil',
             'price': 35000,
-            'ai_credits': 1000,
+            'ai_credits': 100,
             'cashier_quota': 100,
             'product_quota': 20
           },
           {
             'name': 'Usaha Menengah',
             'price': 75000,
-            'ai_credits': 2000,
+            'ai_credits': 200,
             'cashier_quota': -1, // -1 means unlimited
             'product_quota': -1
           }

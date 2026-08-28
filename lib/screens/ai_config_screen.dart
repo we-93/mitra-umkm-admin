@@ -12,7 +12,7 @@ class AiConfigScreen extends StatefulWidget {
 
 class _AiConfigScreenState extends State<AiConfigScreen> {
   final _apiKeyController = TextEditingController();
-  final _modelController = TextEditingController(text: 'wz/gpt-5.4');
+  final _modelController = TextEditingController(text: 'gpt-4o-mini');
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -27,8 +27,8 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
       final doc = await FirebaseFirestore.instance.doc('system_config/general').get();
       if (doc.exists) {
         final data = doc.data()!;
-        _apiKeyController.text = data['api_key_weizerouter'] ?? '';
-        _modelController.text = data['ai_model_name'] ?? 'wz/gpt-5.4';
+        _apiKeyController.text = data['api_key_openai'] ?? '';
+        _modelController.text = data['ai_model_name'] ?? 'gpt-4o-mini';
       }
     } catch (e) {
       debugPrint('Error loading config: $e');
@@ -41,7 +41,7 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
     setState(() => _isSaving = true);
     try {
       await FirebaseFirestore.instance.doc('system_config/general').set({
-        'api_key_weizerouter': _apiKeyController.text.trim(),
+        'api_key_openai': _apiKeyController.text.trim(),
         'ai_model_name': _modelController.text.trim(),
         'updated_at': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -70,46 +70,29 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24.0).copyWith(bottom: 0),
-            child: Text(
-              'Konfigurasi Asisten AI',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : AdminTheme.textPrimary,
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(24.0).copyWith(bottom: 0),
+          child: Text(
+            'Konfigurasi Asisten AI',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : AdminTheme.textPrimary,
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-            child: Text('Atur API Key dari WeizeRouter dan model AI untuk aplikasi Mitra UMKM.', style: TextStyle(color: AdminTheme.textSecondary)),
-          ),
-          const SizedBox(height: 16),
-          TabBar(
-            labelColor: AdminTheme.primary,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: AdminTheme.primary,
-            tabs: const [
-              Tab(icon: Icon(Icons.chat_bubble_outline), text: 'API Chat (Konsultan)'),
-              Tab(icon: Icon(Icons.image_outlined), text: 'API Image (Coming Soon)'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                _buildChatTab(isDark),
-                _buildImageTab(isDark),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+          child: Text('Atur API Key dari OpenAI dan model AI untuk aplikasi Mitra UMKM.', style: TextStyle(color: AdminTheme.textSecondary)),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: _buildChatTab(isDark),
+        ),
+      ],
     );
   }
 
@@ -125,12 +108,12 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Konfigurasi API WeizeRouter', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Konfigurasi API OpenAI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _apiKeyController,
                     decoration: const InputDecoration(
-                      labelText: 'API Key WeizeRouter',
+                      labelText: 'API Key OpenAI',
                       hintText: 'Masukkan Bearer Token API...',
                       border: OutlineInputBorder(),
                     ),
@@ -140,7 +123,7 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
                     controller: _modelController,
                     decoration: const InputDecoration(
                       labelText: 'Nama Model AI (Chat)',
-                      hintText: 'Contoh: wz/gpt-5.4',
+                      hintText: 'Contoh: gpt-4o-mini',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -166,26 +149,7 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
     );
   }
 
-  Widget _buildImageTab(bool isDark) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction, size: 64, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          const Text(
-            'Konfigurasi API Image (Generator Flyer)',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Segera Hadir (Coming Soon)',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildPresetsSection(bool isDark) {
     return Card(

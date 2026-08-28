@@ -12,6 +12,7 @@ import 'package:mitra_umkm_admin/screens/products_config_screen.dart';
 import 'package:mitra_umkm_admin/screens/settings_screen.dart';
 import 'package:mitra_umkm_admin/screens/notification_screen.dart';
 import 'package:mitra_umkm_admin/screens/invoices_screen.dart';
+import 'package:mitra_umkm_admin/screens/ai_log_screen.dart';
 import 'package:mitra_umkm_admin/layout/admin_layout.dart';
 import 'package:mitra_umkm_admin/firebase_options.dart';
 
@@ -110,6 +111,9 @@ class _MitraUmkmAdminAppState extends State<MitraUmkmAdminApp> {
                   break;
                 case '/ai':
                   page = AiConfigScreen();
+                  break;
+                case '/ai_log':
+                  page = AiLogScreen();
                   break;
                 case '/products_config':
                   page = ProductsConfigScreen();
