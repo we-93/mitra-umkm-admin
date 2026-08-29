@@ -71,53 +71,63 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 child: transactions.isEmpty
                     ? const Center(child: Text('Belum ada transaksi di koleksi "transactions".'))
                     : Card(
-                        child: ListView.separated(
-                          itemCount: transactions.length,
-                          separatorBuilder: (ctx, i) => const Divider(height: 1),
-                          itemBuilder: (ctx, i) {
-                            final data = transactions[i].data() as Map<String, dynamic>;
-                            final amount = (data['total_amount'] ?? data['amount'] ?? 0).toDouble();
-                            final status = (data['status'] ?? 'pending').toString();
-                            final invoiceNo = data['invoice_number'] ?? data['transaction_id'] ?? transactions[i].id;
-                            final date = data['created_at'] != null ? (data['created_at'] as Timestamp).toDate() : DateTime.now();
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 48),
+                          child: DataTable(
+                            dataTextStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+                            headingTextStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87),
+                            columnSpacing: 24,
+                            columns: const [
+                              DataColumn(label: Text('No. Invoice')),
+                              DataColumn(label: Text('Tanggal')),
+                              DataColumn(label: Text('Total')),
+                              DataColumn(label: Text('Status')),
+                            ],
+                            rows: transactions.map((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              final amount = (data['total_amount'] ?? data['amount'] ?? 0).toDouble();
+                              final status = (data['status'] ?? 'pending').toString();
+                              final invoiceNo = data['invoice_number'] ?? data['transaction_id'] ?? doc.id;
+                              final date = data['created_at'] != null ? (data['created_at'] as Timestamp).toDate() : DateTime.now();
 
-                            Color statusColor = Colors.orange;
-                            if (status == 'paid' || status == 'success') statusColor = Colors.green;
-                            if (status == 'failed' || status == 'expired') statusColor = Colors.red;
+                              Color statusColor = Colors.orange;
+                              if (status == 'paid' || status == 'success') statusColor = Colors.green;
+                              if (status == 'failed' || status == 'expired') statusColor = Colors.red;
 
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              leading: CircleAvatar(
-                                backgroundColor: statusColor.withOpacity(0.1),
-                                child: Icon(Icons.receipt_outlined, color: statusColor),
-                              ),
-                              title: Text('Invoice #$invoiceNo', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(date), style: const TextStyle(fontSize: 12)),
-                              trailing: MediaQuery.of(context).size.width < 600
-                                  ? Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(currencyFormatter.format(amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                        const SizedBox(height: 4),
-                                        Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                                      ],
-                                    )
-                                  : Row(
+                              return DataRow(
+                                cells: [
+                                  DataCell(
+                                    Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(currencyFormatter.format(amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                        const SizedBox(width: 16),
-                                        Chip(
-                                          label: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                          backgroundColor: statusColor,
+                                        CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: statusColor.withOpacity(0.1),
+                                          child: Icon(Icons.receipt_outlined, color: statusColor, size: 16),
                                         ),
+                                        const SizedBox(width: 12),
+                                        Text('Invoice #$invoiceNo', style: const TextStyle(fontWeight: FontWeight.bold)),
                                       ],
                                     ),
-                            );
-                          },
+                                  ),
+                                  DataCell(Text(DateFormat('dd MMM yyyy, HH:mm').format(date))),
+                                  DataCell(Text(currencyFormatter.format(amount), style: const TextStyle(fontWeight: FontWeight.bold))),
+                                  DataCell(
+                                    Chip(
+                                      label: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                      backgroundColor: statusColor,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
+                    ),
               ),
             ],
           ),
