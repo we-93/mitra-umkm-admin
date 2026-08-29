@@ -2,6 +2,8 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:flutter/foundation.dart';
+import 'package:universal_html/html.dart' as html;
 
 class PdfService {
   static Future<void> downloadInvoicePdf({
@@ -107,9 +109,18 @@ class PdfService {
       ),
     );
 
-    // Save and download PDF via printing package (works natively on Flutter Web to trigger browser download)
     final pdfBytes = await pdf.save();
-    await Printing.sharePdf(bytes: pdfBytes, filename: '$invoiceNumber.pdf');
+    
+    if (kIsWeb) {
+      final blob = html.Blob([pdfBytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', '$invoiceNumber.pdf')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      await Printing.sharePdf(bytes: pdfBytes, filename: '$invoiceNumber.pdf');
+    }
   }
 
   static String _formatDate(DateTime date) {
