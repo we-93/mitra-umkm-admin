@@ -96,73 +96,142 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           Expanded(
             child: SingleChildScrollView(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Versi Aplikasi Seluler (Android/iOS)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
-                      Row(
+              child: Column(
+                children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _versionNameController,
-                              decoration: const InputDecoration(
-                                labelText: 'Nama Versi (Version Name)',
-                                hintText: 'misal: 1.0.0',
-                                border: OutlineInputBorder(),
+                          const Text('Versi Aplikasi Seluler (Android/iOS)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _versionNameController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nama Versi (Version Name)',
+                                    hintText: 'misal: 1.0.0',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
                               ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextField(
+                                  controller: _versionCodeController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Kode Versi (Version Code)',
+                                    hintText: 'misal: 1',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _downloadUrlController,
+                            decoration: const InputDecoration(
+                              labelText: 'URL Download APK / Play Store',
+                              hintText: 'https://...',
+                              border: OutlineInputBorder(),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: TextField(
-                              controller: _versionCodeController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Kode Versi (Version Code)',
-                                hintText: 'misal: 1',
-                                border: OutlineInputBorder(),
-                              ),
+                          const SizedBox(height: 16),
+                          TextField(
+                            controller: _releaseNotesController,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'Catatan Rilis (Release Notes)',
+                              hintText: 'Tulis fitur baru atau perbaikan di versi ini...',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ElevatedButton.icon(
+                              onPressed: _isSaving ? null : _saveVersionConfig,
+                              icon: const Icon(Icons.save),
+                              label: _isSaving
+                                  ? const CircularProgressIndicator(color: Colors.white)
+                                  : const Text('Simpan Pengaturan Versi'),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _downloadUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'URL Download APK / Play Store',
-                          hintText: 'https://...',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _releaseNotesController,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Catatan Rilis (Release Notes)',
-                          hintText: 'Tulis fitur baru atau perbaikan di versi ini...',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSaving ? null : _saveVersionConfig,
-                          icon: const Icon(Icons.save),
-                          label: _isSaving
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text('Simpan Pengaturan Versi'),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  // Download Stats Card
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Statistik Unduhan APK (Landing Page)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: FirebaseFirestore.instance
+                                .collection('apk_downloads')
+                                .orderBy('date', descending: true)
+                                .limit(30)
+                                .snapshots(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: Text('Belum ada data unduhan.'),
+                                );
+                              }
+
+                              final docs = snapshot.data!.docs;
+                              int totalAllTime = 0;
+                              for (var doc in docs) {
+                                totalAllTime += (doc['count'] as num).toInt();
+                              }
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Total Unduhan (30 Hari Terakhir): $totalAllTime kali',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF0F766E)),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: docs.length,
+                                    itemBuilder: (context, index) {
+                                      final data = docs[index].data() as Map<String, dynamic>;
+                                      return ListTile(
+                                        leading: const Icon(Icons.download),
+                                        title: Text('Tanggal: ${data['date']}'),
+                                        trailing: Text(
+                                          '${data['count']} kali',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
