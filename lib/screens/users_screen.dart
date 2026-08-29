@@ -178,7 +178,27 @@ class _UsersScreenState extends State<UsersScreen> {
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Row(
+                      child: isMobile ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextField(
+                            decoration: const InputDecoration(
+                              hintText: 'Cari Toko / Email...',
+                              prefixIcon: Icon(Icons.search),
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            onChanged: (val) => setState(() => _searchQuery = val),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButton<String>(
+                            isExpanded: true,
+                            value: _selectedCategory,
+                            items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                            onChanged: (val) => setState(() => _selectedCategory = val!),
+                          ),
+                        ],
+                      ) : Row(
                         children: [
                           Expanded(
                             child: TextField(

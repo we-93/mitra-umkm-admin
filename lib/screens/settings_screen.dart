@@ -106,7 +106,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           const Text('Versi Aplikasi Seluler (Android/iOS)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
-                          Row(
+                          MediaQuery.of(context).size.width < 600 ? Column(
+                            children: [
+                              TextField(
+                                controller: _versionNameController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Nama Versi (Version Name)',
+                                  hintText: 'misal: 1.0.0',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _versionCodeController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Kode Versi (Version Code)',
+                                  hintText: 'misal: 1',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                            ],
+                          ) : Row(
                             children: [
                               Expanded(
                                 child: TextField(

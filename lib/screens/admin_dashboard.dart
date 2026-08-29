@@ -165,14 +165,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                       // Section 2: Revenue Chart & Category Donut
                       if (isMobile) ...[
-                        _buildRevenueChart(isDark, revenueData),
+                        _buildRevenueChart(isDark, revenueData, isMobile),
                         const SizedBox(height: 24),
                         _buildCategoryDonut(isDark, totalMikro, totalKecil, totalMenengah),
                       ] else ...[
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 7, child: _buildRevenueChart(isDark, revenueData)),
+                            Expanded(flex: 7, child: _buildRevenueChart(isDark, revenueData, isMobile)),
                             const SizedBox(width: 16),
                             Expanded(flex: 3, child: _buildCategoryDonut(isDark, totalMikro, totalKecil, totalMenengah)),
                           ],
@@ -216,7 +216,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildRevenueChart(bool isDark, Map<int, double> data) {
+  Widget _buildRevenueChart(bool isDark, Map<int, double> data, bool isMobile) {
     List<FlSpot> spots = [];
     if (data.isEmpty) {
       spots = [const FlSpot(0, 0)];
@@ -233,14 +233,18 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                const Text('Tren Pendapatan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Row(
+                Text('Tren Pendapatan', style: TextStyle(fontSize: isMobile ? 14 : 18, fontWeight: FontWeight.bold)),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _filterButton('Bulan Ini', isDark),
-                    const SizedBox(width: 8),
                     _filterButton('Tahun Ini', isDark),
                   ],
                 ),
@@ -470,7 +474,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tren Pertumbuhan UMKM (Bulan Ini)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Tren Pertumbuhan UMKM (Bulan Ini)', style: TextStyle(fontSize: MediaQuery.of(context).size.width < 800 ? 14 : 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             SizedBox(
               height: 200,

@@ -158,15 +158,18 @@ class _AiConfigScreenState extends State<AiConfigScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Daftar Prompt Preset (prompts_preset)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('Daftar inspirasi prompt siap pakai bagi pengguna UMKM.', style: TextStyle(fontSize: 12, color: AdminTheme.textSecondary)),
+                    Text('Daftar Prompt Preset (prompts_preset)', style: TextStyle(fontSize: MediaQuery.of(context).size.width < 600 ? 16 : 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    const Text('Daftar inspirasi prompt siap pakai bagi pengguna UMKM.', style: TextStyle(fontSize: 12, color: AdminTheme.textSecondary)),
                   ],
                 ),
                 ElevatedButton.icon(

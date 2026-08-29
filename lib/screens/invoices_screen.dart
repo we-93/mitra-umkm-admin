@@ -86,26 +86,34 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                             if (status == 'failed' || status == 'expired') statusColor = Colors.red;
 
                             return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: CircleAvatar(
                                 backgroundColor: statusColor.withOpacity(0.1),
                                 child: Icon(Icons.receipt_outlined, color: statusColor),
                               ),
-                              title: Text('Invoice #$invoiceNo', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(date)),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    currencyFormatter.format(amount),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Chip(
-                                    label: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                    backgroundColor: statusColor,
-                                  ),
-                                ],
-                              ),
+                              title: Text('Invoice #$invoiceNo', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              subtitle: Text(DateFormat('dd MMM yyyy, HH:mm').format(date), style: const TextStyle(fontSize: 12)),
+                              trailing: MediaQuery.of(context).size.width < 600
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(currencyFormatter.format(amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                        const SizedBox(height: 4),
+                                        Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                      ],
+                                    )
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(currencyFormatter.format(amount), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        const SizedBox(width: 16),
+                                        Chip(
+                                          label: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                          backgroundColor: statusColor,
+                                        ),
+                                      ],
+                                    ),
                             );
                           },
                         ),

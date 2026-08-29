@@ -72,7 +72,96 @@ class _NotificationScreenState extends State<NotificationScreen> {
           const SizedBox(height: 8),
           const Text('Kirim pesan pengumuman atau notifikasi kepada seluruh atau segmen pengguna UMKM.', style: TextStyle(color: AdminTheme.textSecondary)),
           const SizedBox(height: 24),
-          Row(
+          MediaQuery.of(context).size.width < 800 ? Column(
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Buat Notifikasi Baru', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: _targetSegment,
+                        decoration: const InputDecoration(labelText: 'Target Pengguna', border: OutlineInputBorder()),
+                        items: const [
+                          DropdownMenuItem(value: 'Semua Pengguna', child: Text('Semua Pengguna')),
+                          DropdownMenuItem(value: 'Usaha Mikro', child: Text('Usaha Mikro')),
+                          DropdownMenuItem(value: 'Usaha Kecil', child: Text('Usaha Kecil')),
+                          DropdownMenuItem(value: 'Usaha Menengah', child: Text('Usaha Menengah')),
+                        ],
+                        onChanged: (val) => setState(() => _targetSegment = val!),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(labelText: 'Judul Notifikasi', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _messageController,
+                        maxLines: 4,
+                        decoration: const InputDecoration(labelText: 'Isi Pesan Notifikasi', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isSending ? null : _sendNotification,
+                          icon: const Icon(Icons.send),
+                          label: _isSending
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('Kirim Notifikasi'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Riwayat Notifikasi Broadcast', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 350,
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: FirebaseFirestore.instance.collection('notifications').orderBy('created_at', descending: true).snapshots(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+
+                            List<QueryDocumentSnapshot> list = snapshot.data?.docs ?? [];
+                            if (list.isEmpty) {
+                              return const Center(child: Text('Belum ada riwayat notifikasi dikirim.'));
+                            }
+
+                            return ListView.builder(
+                              itemCount: list.length,
+                              itemBuilder: (ctx, i) {
+                                final data = list[i].data() as Map<String, dynamic>;
+                                return ListTile(
+                                  leading: const CircleAvatar(backgroundColor: AdminTheme.secondary, child: Icon(Icons.notifications, color: Colors.white)),
+                                  title: Text(data['title'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Text('${data['target'] ?? ''} • ${data['message'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ) : Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(

@@ -40,7 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: Colors.grey.shade100,
       body: Center(
         child: Container(
-          width: 400,
+          constraints: const BoxConstraints(maxWidth: 400),
+          margin: const EdgeInsets.symmetric(horizontal: 16),
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: Colors.white,

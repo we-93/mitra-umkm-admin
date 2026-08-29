@@ -68,20 +68,16 @@ class _AiLogScreenState extends State<AiLogScreen> {
                             }
 
                             return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               leading: CircleAvatar(
                                 backgroundColor: const Color(0xFF0F766E).withOpacity(0.1),
                                 child: const Icon(Icons.psychology, color: Color(0xFF0F766E)),
                               ),
-                              title: Text('$email ($storeName)', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text(DateFormat('dd MMM yyyy, HH:mm:ss').format(date)),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '${currencyFormatter.format(tokensUsed)} Token',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                                  ),
-                                ],
+                              title: Text('$email ($storeName)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              subtitle: Text(DateFormat('dd MMM yyyy, HH:mm:ss').format(date), style: const TextStyle(fontSize: 12)),
+                              trailing: Text(
+                                '${currencyFormatter.format(tokensUsed)} Token',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: MediaQuery.of(context).size.width < 600 ? 12 : 15),
                               ),
                             );
                           },

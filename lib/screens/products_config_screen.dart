@@ -143,15 +143,18 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Produk & Rekening Pembayaran', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('Kelola paket upgrade kategori dan opsi pembayaran.', style: TextStyle(color: AdminTheme.textSecondary)),
+                    Text('Produk & Rekening Pembayaran', style: TextStyle(fontSize: MediaQuery.of(context).size.width < 600 ? 20 : 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    const Text('Kelola paket upgrade kategori dan opsi pembayaran.', style: TextStyle(color: AdminTheme.textSecondary)),
                   ],
                 ),
                 ElevatedButton.icon(
@@ -167,7 +170,7 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
             unselectedLabelColor: AdminTheme.textSecondary,
             indicatorColor: AdminTheme.primary,
             tabs: [
-              Tab(text: 'Manajemen Paket Upgrade'),
+              Tab(text: 'Manajemen Paket'),
               Tab(text: 'Daftar Rekening Bank'),
             ],
           ),
@@ -192,8 +195,11 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 16,
             children: [
               const Text('Daftar Paket Upgrade', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(
@@ -221,7 +227,50 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: Column(
+                              child: MediaQuery.of(context).size.width < 800 ? Column(
+                                children: [
+                                  TextField(
+                                    controller: TextEditingController(text: pkg['name']),
+                                    decoration: const InputDecoration(labelText: 'Nama Kategori (Misal: Usaha Kecil)', border: OutlineInputBorder()),
+                                    onChanged: (val) => _upgradePackages[index]['name'] = val,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: TextEditingController(text: pkg['price'].toString()),
+                                    decoration: const InputDecoration(labelText: 'Harga (Rp)', border: OutlineInputBorder()),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (val) => _upgradePackages[index]['price'] = int.tryParse(val) ?? 0,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: TextEditingController(text: pkg['ai_credits'].toString()),
+                                    decoration: const InputDecoration(labelText: 'Kuota AI', border: OutlineInputBorder()),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (val) => _upgradePackages[index]['ai_credits'] = int.tryParse(val) ?? 0,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: TextEditingController(text: pkg['cashier_quota'].toString()),
+                                    decoration: const InputDecoration(labelText: 'Kuota Kasir (-1 = Unlimited)', border: OutlineInputBorder()),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (val) => _upgradePackages[index]['cashier_quota'] = int.tryParse(val) ?? 0,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: TextEditingController(text: pkg['product_quota'].toString()),
+                                    decoration: const InputDecoration(labelText: 'Kuota Produk (-1 = Unlimited)', border: OutlineInputBorder()),
+                                    keyboardType: TextInputType.number,
+                                    onChanged: (val) => _upgradePackages[index]['product_quota'] = int.tryParse(val) ?? 0,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: TextEditingController(text: (pkg['lms_quota'] ?? 'Akses Semua Kursus').toString()),
+                                    decoration: const InputDecoration(labelText: 'Akses Kursus LMS (Teks Bebas)', border: OutlineInputBorder()),
+                                    keyboardType: TextInputType.text,
+                                    onChanged: (val) => _upgradePackages[index]['lms_quota'] = val,
+                                  ),
+                                ],
+                              ) : Column(
                                 children: [
                                   Row(
                                     children: [
@@ -308,8 +357,11 @@ class _ProductsConfigScreenState extends State<ProductsConfigScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 16,
             children: [
               const Text('Daftar Rekening Bank Transfer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ElevatedButton.icon(

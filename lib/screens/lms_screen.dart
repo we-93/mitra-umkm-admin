@@ -40,8 +40,11 @@ class _LmsScreenState extends State<LmsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 16,
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,7 +52,7 @@ class _LmsScreenState extends State<LmsScreen> {
                       Text(
                         'Manajemen Modul & Materi LMS',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 20 : 24,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : AdminTheme.textPrimary,
                         ),
