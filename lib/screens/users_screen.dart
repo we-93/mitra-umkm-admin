@@ -90,7 +90,10 @@ class _UsersScreenState extends State<UsersScreen> {
           users = users.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
             final cat = (data['status'] ?? 'Usaha Mikro').toString().toLowerCase();
-            return cat == _selectedCategory.toLowerCase();
+            
+            // To handle cases where status is saved as 'MIKRO', 'KECIL', 'MENENGAH'
+            String searchWord = _selectedCategory.toLowerCase().replaceAll('usaha ', '');
+            return cat.contains(searchWord);
           }).toList();
         }
 
